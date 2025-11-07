@@ -1,12 +1,18 @@
 {
     "user": [
         {
-            "name": "KNU",
-            "age": 20
+            "name": "John Doe",
+            "age": 20,
+            "gender": "Male",
+            "nationalId": "20060000-0123456",
+            "residence": "강원도 춘천시 강원대학길 1(효자동) 강원대학교 춘천캠퍼스"
         },
         {
-            "name": "IE",
-            "age": 22
+            "name": "Jane Smith",
+            "age": 22,
+            "gender": "Female",
+            "nationalId": "19990000-0987654",
+            "residence":"강원도 춘천시 강원대학길 1(효자동) 강원대학교 춘천캠퍼스"
         }
     ]
 }
