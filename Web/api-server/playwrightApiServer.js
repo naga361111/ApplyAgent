@@ -23,6 +23,9 @@ async function executeAction(page, action, url) {
     case 'fill':
       await page.fill(action.selector, action.value);
       break;
+    case 'click':
+      await page.click(action.selector);
+      break;
   }
 }
 
@@ -32,7 +35,9 @@ app.post('/api/automate', async (req, res) => {
 
   try {
     const browser = await getBrowser();
-    const context = await browser.newContext();
+    const context = await browser.newContext({
+    permissions: ['local-network-access']
+  });
     const page = await context.newPage();
 
     console.log(url, actions)
@@ -53,4 +58,4 @@ app.post('/api/automate', async (req, res) => {
   }
 });
 
-app.listen(3000, () => console.log('API 서버 실행 중'));
+app.listen(8888, () => console.log('API 서버 실행 중'));
