@@ -51,11 +51,17 @@
                 // 1. 각 input 요소에서 값을 가져옵니다.
                 const userName = document.getElementById('userName').value;
                 const age = document.getElementById('age').value;
+                const gender = document.getElementById('gender').value;
+                const nationalId = document.getElementById('nationalId').value;
+                const residence = document.getElementById('residence').value;
 
                 // 2. 전송할 데이터를 객체 형태로 만듭니다.
                 const formData = {
                     name: userName,
-                    age: age
+                    age: age,
+                    gender: gender,
+                    nationalId: nationalId,
+                    residence: residence,
                 };
 
                 // 3. fetch API를 사용해 서버로 데이터를 전송합니다.
