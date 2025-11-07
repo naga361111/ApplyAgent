@@ -2,6 +2,7 @@
 const express = require('express');
 const { chromium } = require('playwright');
 const cors = require('cors');
+const cheerio = require('cheerio');
 
 const app = express();
 app.use(cors());
@@ -89,6 +90,74 @@ app.post('/submit-data', (req, res) => {
     message: '데이터를 성공적으로 받았습니다.',
     receivedData: data
   });
+});
+
+app.post('/api/get-elements', async (req, res) => {
+  try {
+    // 페이지 URL을 request body에서 받기
+    const { url } = req.body;
+
+    // fetch로 HTML 가져오기
+    const response = await fetch(url);
+    const html = await response.text();
+
+    // cheerio로 파싱
+    const $ = cheerio.load(html);
+
+    // 모든 태그 추출
+    const elements = [];
+
+    $('p').each((i, el) => {
+      elements.push({
+        tag: 'p',
+        text: $(el).text(),
+        html: $(el).html()
+      });
+    });
+
+    $('form label').each((index, element) => {
+      const label = $(element);
+
+      // 1. label의 'for' 속성값을 가져옵니다.
+      const labelFor = label.attr('for');
+
+      // 'for' 속성이 있는 label만 처리합니다.
+      if (labelFor) {
+
+        // 2. 'for' 속성값과 일치하는 'id'를 가진 input 요소를 찾습니다.
+        //    (form 내부에서만 찾는 것이 더 정확합니다)
+        const input = $(`form input#${labelFor}`);
+
+        // 일치하는 input을 찾았을 경우
+        if (input.length > 0) {
+
+          // 3. input의 'id'와 'type' 속성을 가져옵니다.
+          const inputId = input.attr('id');   // (labelFor 값과 동일합니다)
+          const inputType = input.attr('type');
+
+          // 4. elements 리스트에 객체 형태로 추가합니다.
+          elements.push({
+            labelFor: labelFor,
+            inputId: inputId,
+            inputType: inputType || 'text' // type이 명시되지 않으면 'text'가 기본인 경우가 많음
+          });
+        }
+      }
+    });
+
+    $('button').not('form button').each((i, el) => {
+      elements.push({
+        tag: 'button',
+        text: $(el).text(),
+        id: $(el).attr('id'),
+        class: $(el).attr('class')
+      });
+    });
+
+    res.json({ success: true, elements });
+  } catch (error) {
+    res.json({ success: false, error: error.message });
+  }
 });
 
 app.listen(8888, () => console.log('API 서버 실행 중'));
