@@ -10,7 +10,7 @@ let browser;
 async function getBrowser() {
   if (!browser) {
     browser = await chromium.launch({
-      headless: false,
+      headless: true,
       args: ['--no-sandbox', '--disable-setuid-sandbox']
     });
   }
@@ -45,7 +45,7 @@ app.post('/api/automate', async (req, res) => {
 
     const title = await page.title();
 
-    // await context.close();
+    await context.close();
 
     res.json({ success: true, title });
   } catch (error) {
