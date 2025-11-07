@@ -1,8 +1,10 @@
 // server.js
 const express = require('express');
 const { chromium } = require('playwright');
+const cors = require('cors');
 
 const app = express();
+app.use(cors());
 app.use(express.json());
 
 let browser;
@@ -56,6 +58,21 @@ app.post('/api/automate', async (req, res) => {
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
+});
+
+app.post('/submit-data', (req, res) => {
+    const data = req.body;
+
+    console.log('클라이언트로부터 데이터 수신:', data);
+    console.log(`이름: ${data.name}, 연령: ${data.age}`);
+
+    // 여기서 수신한 data를 데이터베이스에 저장하는 등의 실제 작업을 수행할 수 있습니다.
+
+    res.status(200).json({
+        status: 'success',
+        message: '데이터를 성공적으로 받았습니다.',
+        receivedData: data
+    });
 });
 
 app.listen(8888, () => console.log('API 서버 실행 중'));
