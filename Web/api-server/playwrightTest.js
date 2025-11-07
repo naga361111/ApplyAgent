@@ -37,11 +37,16 @@ app.post('/api/automate', async (req, res) => {
 
     console.log(url, actions)
 
-    await page.goto(url, { waitUntil: 'networkidle' });
+    await page.goto(url, {
+      waitUntil: 'networkidle',
+      headers: {
+        'ngrok-skip-browser-warning': 'true'
+      }
+    });
 
     for (const action of actions) {
-      await executeAction(page, action, url);
-    }
+      await executeAction(page, action, url);
+    }
 
     const title = await page.title();
 
