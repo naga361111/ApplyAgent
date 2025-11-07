@@ -2,7 +2,6 @@ FROM n8nio/n8n:latest
 
 USER root
 
-RUN npm install -g n8n playwright && \
-    npx playwright install
+RUN npm i node-fetch
 
 USER node

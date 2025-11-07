@@ -1,6 +1,6 @@
 services:
   n8n:
-    image: custom-n8n-with-playwright
+    image: custom-n8n-image
     container_name: n8n
     ports:
       - "5678:5678"
@@ -14,7 +14,7 @@ services:
       - WEBHOOK_URL=http://localhost:5678/
       - N8N_ENCRYPTION_KEY=1212
       - GENERIC_TIMEZONE=Asia/Seoul
-      - NODE_FUNCTION_ALLOW_EXTERNAL=playwright
+      - NODE_FUNCTION_ALLOW_EXTERNAL=node-fetch
     volumes:
       - n8n_data:/home/node/.n8n
       - C:\Automation_Dev\n8n:/scripts
