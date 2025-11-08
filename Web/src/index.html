@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Apply Site</title>
+    <script src="app.js"></script>
 </head>
 
 <body>
@@ -38,54 +39,6 @@
     </form>
 
     <button type="button" id="submitBtn">Submit</button>
-
-    <script>
-        // DOM이 모두 로드된 후 스크립트 실행
-        document.addEventListener('DOMContentLoaded', () => {
-
-            // ID로 버튼 요소를 찾음
-            const submitButton = document.getElementById('submitBtn');
-
-            // 버튼 클릭 이벤트 리스너 추가
-            submitButton.addEventListener('click', () => {
-                // 1. 각 input 요소에서 값을 가져옵니다.
-                const userName = document.getElementById('userName').value;
-                const age = document.getElementById('age').value;
-                const gender = document.getElementById('gender').value;
-                const nationalId = document.getElementById('nationalId').value;
-                const residence = document.getElementById('residence').value;
-
-                // 2. 전송할 데이터를 객체 형태로 만듭니다.
-                const formData = {
-                    name: userName,
-                    age: age,
-                    gender: gender,
-                    nationalId: nationalId,
-                    residence: residence,
-                };
-
-                // 3. fetch API를 사용해 서버로 데이터를 전송합니다.
-                fetch('https://applyagent.onrender.com/submit-data', { // '/submit-data'는 우리가 만들 서버의 주소(엔드포인트)입니다.
-                    method: 'POST', // 데이터를 생성/전송할 때는 'POST' 메소드를 사용합니다.
-                    headers: {
-                        'Content-Type': 'application/json' // 우리가 보내는 데이터가 JSON 형식임을 명시합니다.
-                    },
-                    body: JSON.stringify(formData) // JavaScript 객체를 JSON 문자열로 변환하여 본문에 담습니다.
-                })
-                .then(response => response.json()) // 서버로부터 받은 응답을 JSON으로 파싱합니다.
-                .then(data => {
-                    // 4. 서버로부터 성공 응답을 받은 후 처리
-                    console.log('서버 응답:', data);
-                    alert('제출 성공!');
-                })
-                .catch(error => {
-                    // 5. 에러 처리
-                    console.error('전송 실패:', error);
-                    alert('제출 실패.');
-                });
-            });
-        });
-    </script>
 </body>
 
 </html>
