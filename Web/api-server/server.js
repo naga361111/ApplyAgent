@@ -94,64 +94,65 @@ app.post('/submit-data', (req, res) => {
 
 app.post('/api/get-elements', async (req, res) => {
   try {
-    // 페이지 URL을 request body에서 받기
     const { url } = req.body;
 
-    // fetch로 HTML 가져오기
     const response = await fetch(url);
     const html = await response.text();
 
-    // cheerio로 파싱
     const $ = cheerio.load(html);
 
-    // 모든 태그 추출
     const elements = [];
 
-    $('p').each((i, el) => {
-      elements.push({
-        tag: 'p',
-        text: $(el).text(),
-        html: $(el).html()
-      });
-    });
+    // body 내의 모든 자식 요소를 순회
+    $('body').contents().each((i, node) => {
+      const element = $(node);
 
-    $('form label').each((index, element) => {
-      const label = $(element);
+      // p 태그
+      if (node.name === 'p') {
+        elements.push({
+          tag: 'p',
+          text: element.text(),
+          html: element.html()
+        });
+      }
 
-      // 1. label의 'for' 속성값을 가져옵니다.
-      const labelFor = label.attr('for');
+      // form label
+      if (node.name === 'form') {
+        // form 내의 label들을 순회
+        element.find('label').each((index, labelEl) => {
+          const label = $(labelEl);
+          const labelFor = label.attr('for');
 
-      // 'for' 속성이 있는 label만 처리합니다.
-      if (labelFor) {
+          if (labelFor) {
+            const input = element.find(`input#${labelFor}`);
 
-        // 2. 'for' 속성값과 일치하는 'id'를 가진 input 요소를 찾습니다.
-        //    (form 내부에서만 찾는 것이 더 정확합니다)
-        const input = $(`form input#${labelFor}`);
+            if (input.length > 0) {
+              const inputId = input.attr('id');
+              const inputType = input.attr('type');
 
-        // 일치하는 input을 찾았을 경우
-        if (input.length > 0) {
+              elements.push({
+                labelFor: labelFor,
+                inputId: inputId,
+                inputType: inputType || 'text'
+              });
+            }
+          }
+        });
+      }
 
-          // 3. input의 'id'와 'type' 속성을 가져옵니다.
-          const inputId = input.attr('id');   // (labelFor 값과 동일합니다)
-          const inputType = input.attr('type');
+      // button 태그 (form 내 버튼 제외)
+      if (node.name === 'button') {
+        const isInForm = element.parents('form').length === 0;
 
-          // 4. elements 리스트에 객체 형태로 추가합니다.
+        if (isInForm) {
           elements.push({
-            labelFor: labelFor,
-            inputId: inputId,
-            inputType: inputType || 'text' // type이 명시되지 않으면 'text'가 기본인 경우가 많음
+            tag: 'button',
+            text: element.text(),
+            id: element.attr('id'),
+            class: element.attr('class')
           });
         }
       }
-    });
-
-    $('button').not('form button').each((i, el) => {
-      elements.push({
-        tag: 'button',
-        text: $(el).text(),
-        id: $(el).attr('id'),
-        class: $(el).attr('class')
-      });
     });
 
     res.json({ success: true, elements });
