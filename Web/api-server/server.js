@@ -32,23 +32,6 @@ async function executeAction(page, action, url) {
   }
 }
 
-// 웹훅 호출
-async function callWebhook() {
-  try {
-    const response = await fetch('https://port-0-applyagent-mhr1tpgu9de17e42.sel3.cloudtype.app/webhook-test/11390934-49d0-4d27-be67-727cfc3e1ec3', {
-      method: 'GET'
-    });
-
-    if (response.ok) {
-      console.log('웹훅 호출 성공');
-    } else {
-      console.error('오류 상태 코드:', response.status);
-    }
-  } catch (error) {
-    console.error('요청 실패:', error);
-  }
-}
-
 // 웹 페이지 조작 API 엔드포인트
 app.post('/api/automate', async (req, res) => {
   const { url, actions } = req.body;
@@ -100,12 +83,8 @@ app.post('/submit-data', (req, res) => {
   console.log('클라이언트로부터 데이터 수신:', data);
   console.log(`이름: ${data.name}, 연령: ${data.age}`);
 
-  // 여기서 수신한 data를 데이터베이스에 저장하는 등의 실제 작업을 수행할 수 있습니다.
-
   res.status(200).json({
-    status: 'success',
-    message: '데이터를 성공적으로 받았습니다.',
-    receivedData: data
+    status: 200
   });
 });
 
@@ -172,19 +151,36 @@ app.post('/api/get-elements', async (req, res) => {
       }
     });
 
-    res.json({ success: true, elements });
+    res.json({ elements });
   } catch (error) {
-    res.json({ success: false, error: error.message });
+    res.json({ error: error.message });
   }
 });
 
-app.post('/api/call-webhook', (req, res) => {
-  callWebhook();
+app.post('/api/call-webhook', async (req, res) => {
+  try {
+    const response = await fetch('https://naga361111.store/webhook-test/86ef1185-c21b-4935-a87b-e17e37c56b0a', {
+      method: 'GET'
+    });
 
-  res.status(200).json({
-    status: 'success',
-    message: 'webhook 호출 성공'
-  });
-})
+    if (response.ok) {
+      console.log('웹훅 호출 성공');
+      res.status(200).json({
+        status: response.status
+      });
+    } else {
+      console.error('웹훅 호출 실패:', response.status);
+      res.status(response.status).json({
+        status: response.status
+      });
+    }
+  } catch (error) {
+    console.error('요청 실패:', error);
+    res.status(500).json({
+      error: error.message
+    });
+  }
+});
+
 
 app.listen(8888, () => console.log('API 서버 실행 중'));
