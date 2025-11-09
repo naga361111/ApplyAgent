@@ -53,6 +53,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             const errData = await response.json();
             console.error("에이전트 호출 실패: ", errData);
+            alert("에이전트 호출 실패: ", errData);
         }
     })
 });
