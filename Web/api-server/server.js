@@ -47,7 +47,7 @@ app.post('/api/automate', async (req, res) => {
   try {
     // 1. 브라우저 실행 (Chromium 사용)
     browser = await chromium.launch({
-      headless: false, // true로 설정하면 UI 없이 백그라운드에서 실행됩니다.
+      headless: true, // true로 설정하면 UI 없이 백그라운드에서 실행됩니다.
     });
     const context = await browser.newContext();
     const page = await context.newPage();
