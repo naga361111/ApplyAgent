@@ -103,18 +103,16 @@ app.post('/api/get-elements', async (req, res) => {
     $('body').contents().each((i, node) => {
       const element = $(node);
 
-      // p 태그
+      // <p> tag
       if (node.name === 'p') {
         elements.push({
           tag: 'p',
-          text: element.text(),
-          html: element.html()
+          text: element.text()
         });
       }
 
-      // form label
+      // <form> tag
       if (node.name === 'form') {
-        // form 내의 label들을 순회
         element.find('label').each((index, labelEl) => {
           const label = $(labelEl);
           const labelFor = label.attr('for');
@@ -127,7 +125,7 @@ app.post('/api/get-elements', async (req, res) => {
               const inputType = input.attr('type');
 
               elements.push({
-                labelFor: labelFor,
+                tag: 'input',
                 inputId: inputId,
                 inputType: inputType || 'text'
               });
@@ -136,7 +134,7 @@ app.post('/api/get-elements', async (req, res) => {
         });
       }
 
-      // button 태그 (form 내 버튼 제외)
+      // <button> tag
       if (node.name === 'button') {
         const isInForm = element.parents('form').length === 0;
 
@@ -144,14 +142,13 @@ app.post('/api/get-elements', async (req, res) => {
           elements.push({
             tag: 'button',
             text: element.text(),
-            id: element.attr('id'),
-            class: element.attr('class')
+            id: element.attr('id')
           });
         }
       }
     });
 
-    res.json({ elements });
+    res.status(200).json({ elements });
   } catch (error) {
     res.json({ error: error.message });
   }

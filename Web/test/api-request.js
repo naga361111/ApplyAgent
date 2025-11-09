@@ -18,7 +18,7 @@ async function testGetElements() {
 
     const data = await response.json();
 
-    if (data.success) {
+    if (response.ok) {
       console.log('✓ API 응답 성공\n');
       console.log('수집된 요소 개수:', data.elements.length);
       console.log('\n상세 결과:');
@@ -31,7 +31,7 @@ async function testGetElements() {
   }
 }
 
-// testGetElements();
+testGetElements();
 
 async function callWebhook() {
   try {
@@ -49,5 +49,5 @@ async function callWebhook() {
   }
 }
 
-callWebhook();
+// callWebhook();
 
