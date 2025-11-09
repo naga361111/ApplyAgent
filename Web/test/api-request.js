@@ -31,4 +31,23 @@ async function testGetElements() {
   }
 }
 
-testGetElements();
+// testGetElements();
+
+async function callWebhook() {
+  try {
+    const response = await fetch('https://port-0-applyagent-mhr1tpgu9de17e42.sel3.cloudtype.app/webhook-test/11390934-49d0-4d27-be67-727cfc3e1ec3', {
+      method: 'GET'
+    });
+    
+    if (response.ok) {
+      console.log('웹훅 호출 성공');
+    } else {
+      console.error('오류 상태 코드:', response.status);
+    }
+  } catch (error) {
+    console.error('요청 실패:', error);
+  }
+}
+
+callWebhook();
+

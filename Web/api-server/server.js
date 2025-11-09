@@ -32,6 +32,23 @@ async function executeAction(page, action, url) {
   }
 }
 
+// 웹훅 호출
+async function callWebhook() {
+  try {
+    const response = await fetch('https://port-0-applyagent-mhr1tpgu9de17e42.sel3.cloudtype.app/webhook-test/11390934-49d0-4d27-be67-727cfc3e1ec3', {
+      method: 'GET'
+    });
+
+    if (response.ok) {
+      console.log('웹훅 호출 성공');
+    } else {
+      console.error('오류 상태 코드:', response.status);
+    }
+  } catch (error) {
+    console.error('요청 실패:', error);
+  }
+}
+
 // 웹 페이지 조작 API 엔드포인트
 app.post('/api/automate', async (req, res) => {
   const { url, actions } = req.body;
@@ -160,5 +177,14 @@ app.post('/api/get-elements', async (req, res) => {
     res.json({ success: false, error: error.message });
   }
 });
+
+app.post('/api/call-webhook', (req, res) => {
+  callWebhook();
+
+  res.status(200).json({
+    status: 'success',
+    message: 'webhook 호출 성공'
+  });
+})
 
 app.listen(8888, () => console.log('API 서버 실행 중'));
