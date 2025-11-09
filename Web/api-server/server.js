@@ -159,7 +159,7 @@ app.post('/api/get-elements', async (req, res) => {
 
 app.post('/api/call-webhook', async (req, res) => {
   try {
-    const response = await fetch('https://naga361111.store/webhook-test/86ef1185-c21b-4935-a87b-e17e37c56b0a', {
+    const response = await fetch('https://naga361111.store/webhook-test/022066dc-5a7f-491b-a21d-fd6dd4061618', {
       method: 'GET'
     });
 
