@@ -8,7 +8,6 @@
     <link rel="stylesheet" href="style.css">
     <script src="app.js"></script>
     <script src="paperApplyModal.js"></script>
-    <script src="applyAgent.js"></script>
 </head>
 
 <body>
@@ -60,7 +59,13 @@
 
     <button type="button" id="submitBtn">Submit</button>
 
-    <button id="runAgent">Run Agent</button>
+    <button id="runAgentBtn">Run Agent</button>
+
+    <!-- 로딩 -->
+    <div id="loadingOverlay">
+        <div class="loading-spinner"></div>
+        <p>요청 처리 중...</p>
+    </div>
 </body>
 
 </html>

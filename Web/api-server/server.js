@@ -8,6 +8,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+const jobStorage = {};
 let browser;
 
 async function getBrowser() {
@@ -190,27 +191,73 @@ app.post('/api/get-elements', async (req, res) => {
 
 app.post('/api/call-webhook', async (req, res) => {
   try {
+    const jobId = 'job_' + Date.now();
+
+    jobStorage[jobId] = { status: 'pending', result: null };
+
     const response = await fetch('https://naga361111.store/webhook-test/022066dc-5a7f-491b-a21d-fd6dd4061618', {
-      method: 'GET'
-    });
+    method: 'POST', 
+    headers: {
+        'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ jobId: jobId }) 
+});
 
     if (response.ok) {
-      console.log('웹훅 호출 성공');
+      console.log('웹훅 호출 성공', jobId);
       res.status(200).json({
-        status: response.status
+        status: response.status,
+        jobId: jobId
       });
     } else {
       console.error('웹훅 호출 실패:', response.status);
       res.status(response.status).json({
         status: response.status
+        // pending을 끝내는 데이터 삽입
       });
     }
   } catch (error) {
     console.error('요청 실패:', error);
     res.status(500).json({
       error: error.message
+      // pending을 끝내는 데이터 삽입
     });
   }
+});
+
+app.post('/api/job-status', (req, res) => {
+  const { jobId } = req.body;
+
+  if (!jobId) {
+    return res.status(400).json({ error: 'jobId is required in the body' });
+  }
+  const job = jobStorage[jobId];
+
+  if (!job) {
+    return res.status(404).json({ error: 'Job not found' });
+  }
+
+  res.status(200).json(job);
+});
+
+app.post('/api/mark-job-complete', (req, res) => {
+  const { jobId } = req.body;
+
+  if (!jobId) {
+    return res.status(400).json({ error: 'jobId is required in the body' });
+  }
+  const job = jobStorage[jobId];
+
+  if (!job) {
+    return res.status(404).json({ error: 'Job not found' });
+  }
+  if (job.status === 'complete') {
+    return res.status(200).json({ message: 'Job already marked as complete.' });
+  }
+
+  job.status = 'complete';
+
+  console.log(`Job ${jobId} was marked complete by an external POST!`);
 });
 
 app.post('/api/find-modal-id', async (req, res) => {
