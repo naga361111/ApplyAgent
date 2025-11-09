@@ -1,49 +1,169 @@
+/* === 기본 및 본문 스타일 === */
 body {
-    font-family: Arial, sans-serif;
+    font-family: 'Malgun Gothic', '맑은 고딕', Dotum, '돋움', sans-serif;
     min-height: 100vh;
-    margin: 0;
-    background-color: #f0f0f0;
+    margin: 30px auto; /* 페이지 상하 여백, 좌우 자동 중앙 정렬 */
+    padding: 30px 40px; /* 콘텐츠 영역 내부 여백 */
+    
+    background-color: #ffffff; /* 본문 내용을 흰색 배경으로 */
+    color: #333;
+    line-height: 1.6;
+    
+    max-width: 800px; /* 최대 너비 고정 */
+    border-radius: 8px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05); /* 은은한 그림자 */
+    
+    /* body 외곽의 배경색을 회색으로 설정하기 위한 트릭 */
+    /* html 태그에 배경색을 설정합니다. */
+    
+    /* === 중요: 자식 요소의 absolute 위치 기준 === */
+    position: relative; 
 }
 
-button {
-    padding: 10px 20px;
+/* body를 감싸는 html 태그에 회색 배경을 줍니다. */
+html {
+    background-color: #f4f7f6;
+}
+
+/* === 헤더 스타일 (h1) === */
+h1 {
+    margin: 0 0 10px 0;
+    color: #003366; /* 진한 남색 */
+    font-size: 28px;
+    text-align: left;
+    border-bottom: 3px solid #0056b3; /* 정부/기관 상징 파란색 */
+    padding-bottom: 15px;
+    
+    /* Agent 버튼이 겹치지 않도록 제목 우측에 여백 확보 */
+    padding-right: 150px; 
+}
+
+p {
     font-size: 16px;
+    margin-bottom: 30px; /* 안내 문구와 폼 사이 여백 */
+    color: #555;
+}
+
+/* === 폼 스타일 === */
+/* 개별 form 태그를 폼 그룹처럼 취급 */
+form {
+    margin-bottom: 20px;
+}
+
+form label {
+    display: block; /* 레이블을 별도 라인으로 */
+    font-size: 16px;
+    font-weight: bold;
+    margin-bottom: 8px;
+    color: #555;
+}
+
+form input[type="text"],
+form input[type="number"] {
+    width: 100%;
+    padding: 12px;
+    font-size: 16px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    box-sizing: border-box; /* 패딩 포함 100% 너비 */
+}
+
+/* 입력창 포커스 스타일 */
+form input:focus {
+    border-color: #0056b3;
+    outline: none;
+    box-shadow: 0 0 5px rgba(0, 86, 179, 0.2);
+}
+
+/* === 버튼 스타일 === */
+/* 기본 버튼 스타일 */
+button {
+    padding: 12px 25px;
+    font-size: 16px;
+    font-weight: bold;
     cursor: pointer;
-    background-color: #007bff;
-    color: white;
     border: none;
     border-radius: 5px;
+    margin: 10px 10px 10px 0; /* 버튼 간 여백 (runAgent 제외) */
+    transition: background-color 0.3s ease;
 }
 
-button:hover {
+/* 강조 버튼 (파란색) */
+#submitBtn,
+#confirmBtn {
     background-color: #0056b3;
+    color: white;
 }
 
-/* 모달 숨김 */
+#submitBtn:hover,
+#confirmBtn:hover {
+    background-color: #003366; /* 더 진한 파란색 */
+}
+
+/* 보조 버튼 (회색) - runAgent 제외 */
+#paperApplyBtn,
+#closeBtn {
+    background-color: #e9ecef;
+    color: #333;
+    border: 1px solid #ccc;
+}
+
+#paperApplyBtn:hover,
+#closeBtn:hover {
+    background-color: #d1d5db;
+}
+
+/* === [변경] Run Agent 버튼 특별 스타일 === */
+#runAgent {
+    position: absolute;
+    top: 30px;       /* body의 padding-top과 동일 */
+    right: 40px;      /* body의 padding-right와 동일 */
+    margin: 0;        /* 기본 버튼 마진 제거 */
+    
+    /* 보조 버튼 스타일 적용 */
+    background-color: #e9ecef;
+    color: #333;
+    border: 1px solid #ccc;
+    padding: 10px 20px; /* 다른 버튼보다 살짝 작게 */
+    font-size: 14px;
+}
+
+#runAgent:hover {
+    background-color: #d1d5db;
+}
+
+
+/* === 모달 스타일 === */
 .modal {
     display: none;
     position: fixed;
-    z-index: 1;
+    z-index: 100;
     left: 0;
     top: 0;
     width: 100%;
     height: 100%;
-    background-color: rgba(0, 0, 0, 0.4);
+    background-color: rgba(0, 0, 0, 0.5); /* 어두운 배경 오버레이 */
+    overflow: auto;
 }
 
-/* 모달 내용 */
 .modal-content {
     background-color: #fefefe;
-    margin: 15% auto;
-    padding: 20px;
+    margin: 10% auto; /* 화면 상단에서 10% 아래에 위치 */
+    padding: 25px 30px;
     border: 1px solid #888;
-    width: 80%;
-    max-width: 400px;
+    width: 90%;
+    max-width: 450px;
     border-radius: 8px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
 }
 
-/* 모달 닫기 버튼 */
+.modal-content h2 {
+    margin-top: 0;
+    color: #003366;
+    border-bottom: 2px solid #eee;
+    padding-bottom: 10px;
+}
+
 .close {
     color: #aaa;
     float: right;
@@ -55,6 +175,7 @@ button:hover {
 .close:hover,
 .close:focus {
     color: black;
+    text-decoration: none;
 }
 
 .modal-buttons {
@@ -64,4 +185,5 @@ button:hover {
 
 .modal-buttons button {
     margin-left: 10px;
+    margin-bottom: 0;
 }
