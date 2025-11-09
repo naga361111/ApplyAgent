@@ -19,7 +19,7 @@ document.addEventListener('DOMContentLoaded', () => {
             residence: residence,
         };
 
-        const response = fetch(backendURL + '/submit-data', {
+        const response = await fetch(backendURL + '/submit-data', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
