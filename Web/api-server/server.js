@@ -36,44 +36,78 @@ async function executeAction(page, action, url) {
 app.post('/api/automate', async (req, res) => {
   const { url, actions } = req.body;
 
-  try {
-    const browser = await getBrowser();
-    const context = await browser.newContext({
-      permissions: ['local-network-access']
+  // 기본 유효성 검사
+  if (!url || !actions || !Array.isArray(actions) || actions.length === 0) {
+    return res.status(400).json({
+      error: 'Invalid request body. "url" and "actions" (array) are required.',
     });
+  }
+
+  let browser = null;
+  try {
+    // 1. 브라우저 실행 (Chromium 사용)
+    browser = await chromium.launch({
+      headless: false, // true로 설정하면 UI 없이 백그라운드에서 실행됩니다.
+    });
+    const context = await browser.newContext();
     const page = await context.newPage();
 
-    console.log(url, actions)
-
+    // 2. 타겟 URL로 이동
     await page.goto(url, { waitUntil: 'networkidle' });
 
-    for (const action of actions) {
-      // 'submitBtn' 클릭 액션인지 확인
-      if (action.type === 'click' && action.selector === '#submitBtn') {
-        await Promise.all([
-          // 1. /submit-data 엔드포인트로부터 200 응답이 올 때까지 대기
-          page.waitForResponse(
-            resp => resp.url().includes('/submit-data') && resp.status() === 200,
-            { timeout: 10000 } // 10초 타임아웃
-          ),
-          // 2. 실제 클릭 실행
-          executeAction(page, action, url)
-        ]);
-        console.log('[/submit-data] 응답 수신 완료.');
+    console.log(`Mapsd to ${url}. Executing ${actions.length} actions...`);
 
-      } else {
-        // 'fill' 등 다른 액션은 그냥 실행
-        await executeAction(page, action, url);
+    // 3. actions 배열을 순차적으로 실행
+    for (const action of actions) {
+      if (!action.type || !action.selector) {
+        console.warn('Skipping invalid action:', action);
+        continue; // 필수 필드가 없으면 건너뜀
+      }
+
+      // 'type'에 따라 분기
+      switch (action.type) {
+        case 'fill':
+          if (typeof action.value === 'undefined') {
+            console.warn(`Skipping fill action: 'value' is missing for selector ${action.selector}`);
+            continue;
+          }
+          console.log(`Filling ${action.selector} with value: ${action.value}`);
+          // 'fill' 액션: 요소를 찾아 값 입력
+          await page.fill(action.selector, action.value);
+          break;
+
+        case 'click':
+          console.log(`Clicking ${action.selector}`);
+          // 'click' 액션: 요소를 찾아 클릭
+          await page.click(action.selector);
+          break;
+
+        default:
+          // 지원하지 않는 액션 타입
+          console.warn(`Unknown action type: ${action.type}. Skipping.`);
+          break;
       }
     }
 
-    const title = await page.title();
+    // 4. 성공 응답 전송
+    console.log('Automation completed successfully.');
+    res.status(200).json({
+      message: 'Automation completed successfully.',
+    });
 
-    await context.close();
-
-    res.json({ success: true, title });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    // 5. 에러 처리
+    console.error('Automation failed:', error.message);
+    res.status(500).json({
+      error: `Automation failed: ${error.message}`,
+    });
+
+  } finally {
+    // 6. 브라우저 종료 (성공/실패 여부와 관계없이 항상 실행)
+    if (browser) {
+      // await browser.close();
+      console.log('Browser closed.');
+    }
   }
 });
 
@@ -178,6 +212,70 @@ app.post('/api/call-webhook', async (req, res) => {
     });
   }
 });
+
+app.post('/api/find-modal-id', async (req, res) => {
+  try {
+    const { url } = req.body;
+
+    const response = await fetch(url);
+    const html = await response.text();
+
+    const $ = cheerio.load(html);
+
+    const divIds = [];
+
+    $('div').each((index, element) => {
+      const id = $(element).attr('id');
+      if (id) {
+        divIds.push(id);
+      }
+    });
+
+    console.log(divIds);
+
+    res.status(200).json({ divIds });
+  } catch (error) {
+    res.json({ error: error.message });
+  }
+})
+
+app.post('/api/find-modal-elements', async (req, res) => {
+  try {
+    const modalBtns = []
+
+    const { url, modalId } = req.body;
+
+    const response = await fetch(url);
+    const html = await response.text();
+
+    const $ = cheerio.load(html);
+
+    for (const id of modalId) {
+      const modal = $('#' + id);
+      const buttons = [];
+
+      modal.find('button').each((index, element) => {
+        const $btn = $(element);
+        buttons.push({
+          id: $btn.attr('id'),
+          text: $btn.text().trim()
+        });
+      });
+
+      const btns = {
+        id: id,
+        btns: buttons
+      }
+
+      modalBtns.push(btns);
+    }
+
+    console.log(elements)
+    res.status(200).json({ elements });
+  } catch (error) {
+    res.json({ error: error.message });
+  }
+})
 
 
 app.listen(8888, () => console.log('API 서버 실행 중'));
