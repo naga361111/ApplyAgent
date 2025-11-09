@@ -5,13 +5,13 @@ services:
     ports:
       - "5678:5678"
     environment:
-      - N8N_HOST=0.0.0.0
+      - N8N_HOST=naga361111.store
       - N8N_PORT=5678
-      - N8N_PROTOCOL=http
+      - N8N_PROTOCOL=https
       - N8N_BASIC_AUTH_ACTIVE=true
       - N8N_BASIC_AUTH_USER=guest
       - N8N_BASIC_AUTH_PASSWORD=1212
-      - WEBHOOK_URL=http://localhost:5678/
+      - WEBHOOK_URL=https://naga361111.store
       - N8N_ENCRYPTION_KEY=1212
       - GENERIC_TIMEZONE=Asia/Seoul
       - NODE_FUNCTION_ALLOW_EXTERNAL=node-fetch
