@@ -4,6 +4,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const submitButton = document.getElementById('submitBtn');
     const runAgentBtn = document.getElementById('runAgentBtn');
     const loadingOverlay = document.getElementById('loadingOverlay');
+    const loadingStatusHtml = document.getElementById('loadingStatus');
 
     let pollingInterval = null;
 
@@ -92,6 +93,8 @@ document.addEventListener('DOMContentLoaded', () => {
             clearInterval(pollingInterval);
         }
 
+        loadingStatusHtml.innerText = 'Calling Agent API...';
+
         try {
             const startResponse = await fetch(backendURL + '/api/call-webhook', {
                 method: 'POST',
@@ -109,6 +112,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!jobId) {
                 throw new Error('서버에서 jobId를 받지 못했습니다.');
             }
+
+            loadingStatusHtml.innerText = 'Agent Running...'
 
             pollingInterval = setInterval(() => checkJobStatus(jobId), 1000);
 
