@@ -195,7 +195,7 @@ app.post('/api/call-webhook', async (req, res) => {
 
     jobStorage[jobId] = { status: 'pending', result: null };
 
-    const response = await fetch('https://naga361111.store/webhook-test/022066dc-5a7f-491b-a21d-fd6dd4061618', {
+    const response = await fetch('https://naga361111.store/webhook/022066dc-5a7f-491b-a21d-fd6dd4061618', {
     method: 'POST', 
     headers: {
         'Content-Type': 'application/json'
