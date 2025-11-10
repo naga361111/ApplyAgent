@@ -258,6 +258,7 @@ app.post('/api/mark-job-complete', (req, res) => {
   job.status = 'complete';
 
   console.log(`Job ${jobId} was marked complete by an external POST!`);
+  res.status(200).json({ message: 'Job marked as complete.' });
 });
 
 app.post('/api/find-modal-id', async (req, res) => {
