@@ -3,6 +3,13 @@ const express = require('express');
 const { chromium } = require('playwright');
 const cors = require('cors');
 const cheerio = require('cheerio');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
+
+require('dotenv').config();
+
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+
+const jsonServerURL = "https://my-json-server.typicode.com/naga361111/ApplyAgent/user"
 
 const app = express();
 app.use(cors());
@@ -22,7 +29,7 @@ async function getBrowser() {
 }
 
 // 각 액션별 실행 함수
-async function executeAction(page, action, url) {
+async function executeAction(page, action) {
   switch (action.type) {
     case 'fill':
       await page.fill(action.selector, action.value);
@@ -30,6 +37,243 @@ async function executeAction(page, action, url) {
     case 'click':
       await page.click(action.selector);
       break;
+  }
+}
+
+// 웹 페이지에서 요소 가져오는 함수
+async function getElementFromHTML(url) {
+  let browser;
+
+  try {
+    browser = await chromium.launch({
+      headless: true,
+      args: ['--no-sandbox', '--disable-setuid-sandbox']
+    });
+
+    const context = await browser.newContext();
+    const page = await context.newPage();
+
+    // console.log(`페이지로 이동 중: ${url}`);
+    await page.goto(url, { waitUntil: 'domcontentloaded' });
+
+    const selector = ':is(input, button):visible';;
+
+    const elementsData = await page.locator(selector).evaluateAll(elements => {
+      const data = [];
+
+      elements.forEach(el => {
+        const tagName = el.tagName.toLowerCase();
+
+        if (tagName === 'input') {
+          data.push({
+            tag: tagName,
+            id: el.id || null,
+            type: el.type || text,
+            disabled: el.disabled || false
+          });
+        } else if (tagName === 'button') {
+          data.push({
+            tag: tagName,
+            id: el.id || null,
+            disabled: el.disabled || false
+          });
+        }
+      });
+      return data;
+    });
+
+    // console.log(`--- ${url} 에서 찾은 요소 (${elementsData.length}개) ---`);
+    // console.log(JSON.stringify(elementsData, null, 2));
+
+    console.log(`>> ${url} 에서 요소 (${elementsData.length}개)를 성공적으로 가져왔습니다.`);
+    return elementsData;
+
+  } catch (error) {
+    console.error('HTML 태그 추출 중 오류 발생:', error);
+  } finally {
+    if (browser) {
+      await browser.close();
+      // console.log('브라우저가 종료되었습니다.');
+    }
+  }
+}
+
+async function filteringValidData(elements) {
+  const validElements = elements.filter(element => {
+
+    if (element.tag === 'input') {
+      return element.disabled === false;
+    }
+
+    if (element.tag === 'button') {
+      return element.id !== 'runAgentBtn';
+    }
+
+    return true;
+  });
+
+  console.log("불필요한 요소 필터링이 완료되었습니다.");
+  console.log(validElements);
+  return validElements;
+}
+
+async function filteringInputFields(data) {
+  const inputFields = data.filter(data => {
+
+    if (data.tag === 'input') {
+      return true
+    }
+  });
+
+  console.log("input field 필터링이 완료되었습니다.");
+  return inputFields;
+}
+
+async function getUserInfoFromServer() {
+  try {
+    const response = await fetch(jsonServerURL);
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    console.log("유저 데이터를 성공적으로 가져왔습니다.");
+    return data;
+
+  } catch (error) {
+    console.error('데이터를 가져오는 중 오류 발생:', error);
+    return error.message;
+  }
+}
+
+async function promptGenerator(requiredData, userData) {
+  const prompt = `
+  Role: You are a data mapping specialist.
+  Primary Goal: Your primary goal is to intelligently map values from a User Data object to a list of Required Data input fields.
+  Context: The RequiredData object defines a set of input fields that need values. Each field is defined by its id and type.
+  The UserData object provides various pieces of information about a single user (e.g., name, age, id).
+  Your Task: Analyze each input field defined in Required Data. For each field, you must search the User Data to find the most appropriate and semantically corresponding value.
+  This is a smart-mapping task. For example, if Required Data requests a field with the id "userName", you must find the best possible match in User Data, which might be a key like "name", "full_name", or "username".
+  Strive to populate all input fields in Required Data with the correct values from User Data.
+  When return, you should like that: { "id": "inputId", "value": "inputValue" }
+  RequiredData: ${JSON.stringify(requiredData)}
+  UserData: ${JSON.stringify(userData)}
+  ExpectedStructure: [{data...}, {data...}, ...] -> one dimention array
+`;
+
+  console.log("프롬프트 생성이 완료되었습니다.");
+  return prompt;
+}
+
+async function runJsonAgent(prompt) {
+  try {
+    const model = genAI.getGenerativeModel({
+      model: "gemini-2.5-flash",
+      generationConfig: {
+        responseMimeType: "application/json",
+      },
+    });
+
+    // console.log(`[USER] JSON 요청:\n${prompt}`);
+
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const text = response.text();
+
+    const jsonObj = JSON.parse(text);
+
+    // console.log("\n[AI] JSON 응답 객체:");
+    // console.log(jsonObj);
+
+    console.log("JSON 에이전트 실행이 완료되었습니다.");
+    return jsonObj;
+  } catch (error) {
+    console.error("AI 에이전트 실행 중 오류 발생:", error.message);
+    return error.message;
+  }
+}
+
+async function processChainBuild(processData, userData) {
+  const userDataMap = userData.reduce((acc, item) => {
+    acc[item.id] = item.value;
+    return acc;
+  }, {});
+
+  const executionSteps = processData.reduce((acc, element) => {
+    if (element.tag === 'input') {
+      acc.push({
+        type: 'fill',
+        selector: "#" + element.id,
+        value: userDataMap[element.id].toString()
+      });
+    } else if (element.tag === 'button') {
+      acc.push({
+        type: 'click',
+        selector: "#" + element.id
+      });
+    }
+    return acc;
+  }, []);
+
+  console.log("체인 생성이 완료되었습니다.");
+  console.log(executionSteps);
+  return executionSteps;
+}
+
+async function automate(url, processChainData) {
+  let browser;
+
+  try {
+    console.log('>>> 자동 신청 시작...');
+
+    browser = await chromium.launch({
+      headless: false,
+      args: ['--no-sandbox', '--disable-setuid-sandbox']
+    });
+
+    const context = await browser.newContext();
+    const page = await context.newPage();
+
+    await page.goto(url, { waitUntil: 'domcontentloaded' });
+
+    for (const step of processChainData) {
+      if (!step.type || !step.selector) {
+        console.warn('Skipping invalid action:', step);
+        continue;
+      }
+
+      // 'type'에 따라 분기
+      switch (step.type) {
+        case 'fill':
+          if (typeof step.value === 'undefined') {
+            console.warn(`Skipping fill action: 'value' is missing for selector ${step.selector}`);
+            continue;
+          }
+          await page.fill(step.selector, step.value);
+          console.log(`Filling ${step.selector} with value: ${step.value}`);
+          break;
+
+        case 'click':
+          await page.click(step.selector);
+          console.log(`Clicking ${step.selector}`);
+          break;
+
+        default:
+          console.warn(`Unknown action type: ${step.type}. Skipping.`);
+          break;
+      }
+    }
+
+    console.log('>>> 자동 신청 완료...');
+  } catch (error) {
+    console.error('자동 신청 중 오류 발생:', error);
+    return error.message;
+  } finally {
+    if (browser) {
+      await browser.close();
+    }
   }
 }
 
@@ -112,6 +356,7 @@ app.post('/api/automate', async (req, res) => {
   }
 });
 
+// 제출 버튼 함수
 app.post('/submit-data', (req, res) => {
   const data = req.body;
 
@@ -123,106 +368,30 @@ app.post('/submit-data', (req, res) => {
   });
 });
 
-app.post('/api/get-elements', async (req, res) => {
-  try {
-    const { url } = req.body;
+app.post('/api/run-agent', async (req, res) => {
+  const jobId = 'job_' + Date.now();
 
-    const response = await fetch(url);
-    const html = await response.text();
+  jobStorage[jobId] = { status: 'pending', result: null };
 
-    const $ = cheerio.load(html);
+  res.status(200).json({
+    status: 200,
+    jobId: jobId
+  })
 
-    const elements = [];
+  const element = await getElementFromHTML(req.body.url);
+  const vaildData = await filteringValidData(element);
 
-    // body 내의 모든 자식 요소를 순회
-    $('body').contents().each((i, node) => {
-      const element = $(node);
+  const inputFields = await filteringInputFields(vaildData);
 
-      // <p> tag
-      if (node.name === 'p') {
-        elements.push({
-          tag: 'p',
-          text: element.text()
-        });
-      }
+  const userDataFromServer = await getUserInfoFromServer();
 
-      // <form> tag
-      if (node.name === 'form') {
-        element.find('label').each((index, labelEl) => {
-          const label = $(labelEl);
-          const labelFor = label.attr('for');
+  const jsonPrompt = await promptGenerator(inputFields, userDataFromServer);
 
-          if (labelFor) {
-            const input = element.find(`input#${labelFor}`);
+  const agentResult = await runJsonAgent(jsonPrompt);
 
-            if (input.length > 0) {
-              const inputId = input.attr('id');
-              const inputType = input.attr('type');
+  const processChain = await processChainBuild(vaildData, agentResult);
 
-              elements.push({
-                tag: 'input',
-                inputId: inputId,
-                inputType: inputType || 'text'
-              });
-            }
-          }
-        });
-      }
-
-      // <button> tag
-      if (node.name === 'button') {
-        const isInForm = element.parents('form').length === 0;
-
-        if (isInForm) {
-          elements.push({
-            tag: 'button',
-            text: element.text(),
-            id: element.attr('id')
-          });
-        }
-      }
-    });
-
-    res.status(200).json({ elements });
-  } catch (error) {
-    res.json({ error: error.message });
-  }
-});
-
-app.post('/api/call-webhook', async (req, res) => {
-  try {
-    const jobId = 'job_' + Date.now();
-
-    jobStorage[jobId] = { status: 'pending', result: null };
-
-    const response = await fetch('https://naga361111.store/webhook-test/022066dc-5a7f-491b-a21d-fd6dd4061618', {
-    method: 'POST', 
-    headers: {
-        'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({ jobId: jobId }) 
-});
-
-    if (response.ok) {
-      console.log('웹훅 호출 성공', jobId);
-      res.status(200).json({
-        status: response.status,
-        jobId: jobId
-      });
-    } else {
-      console.error('웹훅 호출 실패:', response.status);
-      res.status(response.status).json({
-        status: response.status
-        // pending을 끝내는 데이터 삽입
-      });
-    }
-  } catch (error) {
-    console.error('요청 실패:', error);
-    res.status(500).json({
-      error: error.message
-      // pending을 끝내는 데이터 삽입
-    });
-  }
+  automate(req.body.url, processChain);
 });
 
 app.post('/api/job-status', (req, res) => {
@@ -260,70 +429,5 @@ app.post('/api/mark-job-complete', (req, res) => {
   console.log(`Job ${jobId} was marked complete by an external POST!`);
   res.status(200).json({ message: 'Job marked as complete.' });
 });
-
-app.post('/api/find-modal-id', async (req, res) => {
-  try {
-    const { url } = req.body;
-
-    const response = await fetch(url);
-    const html = await response.text();
-
-    const $ = cheerio.load(html);
-
-    const divIds = [];
-
-    $('div').each((index, element) => {
-      const id = $(element).attr('id');
-      if (id) {
-        divIds.push(id);
-      }
-    });
-
-    console.log(divIds);
-
-    res.status(200).json({ divIds });
-  } catch (error) {
-    res.json({ error: error.message });
-  }
-})
-
-app.post('/api/find-modal-elements', async (req, res) => {
-  try {
-    const modalBtns = []
-
-    const { url, modalId } = req.body;
-
-    const response = await fetch(url);
-    const html = await response.text();
-
-    const $ = cheerio.load(html);
-
-    for (const id of modalId) {
-      const modal = $('#' + id);
-      const buttons = [];
-
-      modal.find('button').each((index, element) => {
-        const $btn = $(element);
-        buttons.push({
-          id: $btn.attr('id'),
-          text: $btn.text().trim()
-        });
-      });
-
-      const btns = {
-        id: id,
-        btns: buttons
-      }
-
-      modalBtns.push(btns);
-    }
-
-    console.log(elements)
-    res.status(200).json({ elements });
-  } catch (error) {
-    res.json({ error: error.message });
-  }
-})
-
 
 app.listen(8888, () => console.log('API 서버 실행 중'));

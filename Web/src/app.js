@@ -1,4 +1,4 @@
-const backendURL = 'https://applyagent.onrender.com';
+const backendURL = 'http://localhost:8888';
 
 document.addEventListener('DOMContentLoaded', () => {
     const submitButton = document.getElementById('submitBtn');
@@ -47,20 +47,24 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     submitButton.addEventListener('click', async () => {
-        const userName = document.getElementById('userName').value;
-        const age = document.getElementById('age').value;
-        const gender = document.getElementById('gender').value;
-        const nationalId = document.getElementById('nationalId').value;
-        const residence = document.getElementById('residence').value;
+        const submitData = {};
+        const allForm = document.querySelectorAll('.basic');
 
-        const formData = {
-            name: userName,
-            age: age,
-            gender: gender,
-            nationalId: nationalId,
-            residence: residence,
-        };
+        allForm.forEach(form => {
+            const input = form.querySelector('input');
 
+            if (input.id === 'paper') {
+                if (input.value === '') {
+                    alert('서류를 제출은 필수 항목입니다!');
+                }
+            }
+
+            if (input && input.id) {
+                submitData[input.id] = input.value;
+            }
+        });
+
+        // turn on loading
         loadingOverlay.style.display = 'flex';
         runAgentBtn.disabled = true;
 
@@ -69,7 +73,7 @@ document.addEventListener('DOMContentLoaded', () => {
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify(formData)
+            body: JSON.stringify(submitData)
         })
 
         if (response.ok) {
@@ -83,6 +87,43 @@ document.addEventListener('DOMContentLoaded', () => {
 
         loadingOverlay.style.display = 'none';
         runAgentBtn.disabled = false;
+
+        // const userName = document.getElementById('userName').value;
+        // const age = document.getElementById('age').value;
+        // const gender = document.getElementById('gender').value;
+        // const nationalId = document.getElementById('nationalId').value;
+        // const residence = document.getElementById('residence').value;
+
+        // const formData = {
+        //     name: userName,
+        //     age: age,
+        //     gender: gender,
+        //     nationalId: nationalId,
+        //     residence: residence,
+        // };
+
+        // loadingOverlay.style.display = 'flex';
+        // runAgentBtn.disabled = true;
+
+        // const response = await fetch(backendURL + '/submit-data', {
+        //     method: 'POST',
+        //     headers: {
+        //         'Content-Type': 'application/json'
+        //     },
+        //     body: JSON.stringify(formData)
+        // })
+
+        // if (response.ok) {
+        //     console.log("신청됨");
+        //     alert('신청됨');
+        // } else {
+        //     const errData = await response.json();
+        //     console.error("신청 실패: ", errData);
+        //     alert('신청 실패: ' + errData);
+        // }
+
+        // loadingOverlay.style.display = 'none';
+        // runAgentBtn.disabled = false;
     });
 
     runAgentBtn.addEventListener('click', async () => {
@@ -96,9 +137,12 @@ document.addEventListener('DOMContentLoaded', () => {
         loadingStatusHtml.innerText = 'Calling Agent API...';
 
         try {
-            const startResponse = await fetch(backendURL + '/api/call-webhook', {
+            const startResponse = await fetch(backendURL + '/api/run-agent', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' }
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    url: location.href
+                })
             });
 
             if (!startResponse.ok) {

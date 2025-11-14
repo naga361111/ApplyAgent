@@ -15,27 +15,27 @@
 
     <p>아래 양식을 전부 기입한 후 신청해주시기 바랍니다.</p>
 
-    <form>
+    <form class="basic">
         <label for="userName">이름: </label>
         <input type="text" id="userName">
     </form>
 
-    <form>
+    <form class="basic">
         <label for="age">연령: </label>
         <input type="number" id="age">
     </form>
 
-    <form>
+    <form class="basic">
         <label for="gender">성별: </label>
         <input type="text" id="gender">
     </form>
 
-    <form>
+    <form class="basic">
         <label for="nationalId">주민번호: </label>
         <input type="text" id="nationalId">
     </form>
 
-    <form>
+    <form class="basic">
         <label for="residence">거주지: </label>
         <input type="text" id="residence">
     </form>
@@ -47,6 +47,22 @@
         <div class="modal-content">
             <span class="close">&times;</span>
             <h2>서류 제출</h2>
+
+            <form class="paperModal">
+                <label for="paperName">이름: </label>
+                <input type="text" id="paperName">
+            </form>
+
+            <form class="paperModal">
+                <label for="paperAge">연령: </label>
+                <input type="number" id="paperAge">
+            </form>
+
+            <form class="paperModal">
+                <label for="paperNationalId">주민번호: </label>
+                <input type="text" id="paperNationalId">
+            </form>
+
             <p>서류 제출를 제출합니다.</p>
             <p>작업을 완료하려면 확인 버튼을 눌러주세요</p>
 
@@ -56,6 +72,11 @@
             </div>
         </div>
     </div>
+
+    <form class="basic">
+        <label for="paper">서류 </label>
+        <input type="text" id="paper" disabled>
+    </form>
 
     <button type="button" id="submitBtn">Submit</button>
 

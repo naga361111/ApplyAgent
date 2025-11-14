@@ -22,7 +22,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 모달 닫기 (확인 버튼)
     confirmBtn.addEventListener('click', () => {
-        alert('확인되었습니다!');
+        let submitData = '';
+        const allModalInput = document.querySelectorAll('.paperModal');
+        const paperInput = document.querySelector('#paper');
+
+        allModalInput.forEach(modalInput => {
+            const input = modalInput.querySelector('input');
+
+            if (input && input.id) {
+                submitData += `${input.id}:${input.value}&}`
+            }
+        });
+
+        paperInput.value = submitData;
+
+        alert('제출되었습니다!');
         modal.style.display = 'none';
     });
 
