@@ -33,6 +33,7 @@ type ActionStep = {
 } | {
   type: 'click';
   selector: string;
+  purpose: string;
 };
 
 // JSON 서버에서 가져온 원본 사용자 정보
@@ -72,7 +73,7 @@ type AgentButtonClassification = {
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY as string);
 
 const OLLAMA_API_URL = "http://localhost:11434/api/generate";
-const OLLAMA_MODEL = "llama3.1:8b-instruct-q8_0";
+const OLLAMA_MODEL = "deepseek-r1:8b";
 
 const jsonServerURL = "https://my-json-server.typicode.com/naga361111/ApplyAgent/user";
 
@@ -85,18 +86,6 @@ let browser: Browser | undefined;
 const jobStorage: Record<string, Job> = {};
 
 // --- 함수 정의 ---
-
-// 각 액션별 실행 함수
-async function executeAction(page: Page, action: ActionStep): Promise<void> {
-  switch (action.type) {
-    case 'fill':
-      await page.fill(action.selector, action.value);
-      break;
-    case 'click':
-      await page.click(action.selector);
-      break;
-  }
-}
 
 // 웹 페이지에서 요소 가져오는 함수 - 확인
 async function getElementFromHTML(url: string, page: Page): Promise<WebElement[]> {
@@ -289,36 +278,23 @@ async function inputPromptGenerator(requiredData: InputElement[], userData: RawU
 // 버튼 판별 (제출 vs 추가과정) prompt 생성 - 확인
 async function buttonPromptGenerator(buttonElement: ButtonElement[]): Promise<string> {
   const prompt = `
-  [SYSTEM]
-  You are a silent JSON processing tool. You will receive an array of button objects.
-  Your task is to process this array and return a new array. Each object in the new array must contain **only two keys**: 'id' (from the original object) and 'purpose' (which you will generate).
-  You MUST return ONLY the transformed JSON array. Do not provide any explanation, preamble, or markdown formatting. **Even if the 'InputData' contains only one button object, your response must still be an array. like [ {key: value} ]**
-  ---
-  Rules for 'purpose' key:
-  1.  The 'purpose' is "submit" if the original 'id' string contains any of the following keywords:
-      submit, save, apply, complete, run, send
-  2.  For all other 'id' values, the 'purpose' is "additional_action".
-  ---
-  Strict Output Format:
-  [{ "id": "...", "purpose": "..." }, { "id": "...", "purpose": "..." }] 
-  [USER]
-  InputData: ${JSON.stringify(buttonElement)}
+  You are a JSON processor. Your task is to modify an userInputData that consists of anrray of button objects. You MUST return the full, modified array based on userInputData.
+  For EACH object in the userInputData array, you MUST follow these two steps:
+  Keep ALL original key-value pairs (like 'tag', 'id', 'disabled').
+  Add ONE new key named "purpose".
+  The value for "purpose" is determined by the "id" string:
+  Use "submit" if the "id" contains any of these keywords (case-insensitive): submit, save, apply, complete, send, finish, next, confirm, ok, run
+  Otherwise, use "additional_action".
+  You are a JSON processor. Your task is to modify an array of button objects. You MUST return the full, modified array.
+  Critical Rule: There MUST be exactly ONE "submit" purpose in the entire array. All other objects must be "additional_action".
+  And You must return same struct of userInputData ARRAY. That array consists of objects that contain legacy key:value and new info: purpose.
+  **YOU MUST FOLLOW THE JSON(ARRARY OF OBJECTS) STRUCTURE IN userInputData**
+  And you should return ONLY JSON(ARRAY OF OBJECTS).
+  userInputData: ${JSON.stringify(buttonElement)}
   `;
 
+  // console.log(prompt);
   console.log("===== 프롬프트 생성이 완료되었습니다. =====");
-  return prompt;
-}
-
-async function modalButtonPromptGenerator(buttons: ButtonElement[]): Promise<string> {
-  const prompt = `
-  Your input will be an array of objects, where each object represents a button element and includes an id.
-  Your goal is to process this array and determine the function of each button, primarily by inferring from its id. You must add a new key named propose to every object in the array based on this logic:
-  If the button's inferred function is finalizing or completing the task (e.g., 'submit', 'finish', 'done', 'complete'), set its propose value to 'complete'.
-  If the button's function is anything else (e.g., 'close', 'cancel', 'back', 'details'), set its propose value to 'others'.
-  The output must be an array of the same objects, each now including the new propose property.
-  `;
-
-  console.log("프롬프트 생성이 완료되었습니다.");
   return prompt;
 }
 
@@ -346,59 +322,6 @@ async function runJsonAgent(prompt: string): Promise<any> {
   } catch (error: any) {
     console.error("AI 에이전트 실행 중 오류 발생:", error.message);
     return error.message;
-  }
-}
-
-// prompt를 받아서 ollama agent 실행 - 확인
-async function ollamaRunJsonAgent(prompt: string): Promise<any> {
-  let ollamaRawResponse = '';
-  try {
-    console.log(">> Ollama JSON 에이전트 실행 시작... <<");
-
-    const response = await fetch(OLLAMA_API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: OLLAMA_MODEL,
-        prompt: prompt,
-        format: "json",
-        stream: false
-      }),
-    });
-
-    if (!response.ok) {
-      const errorBody = await response.text();
-      console.error("Ollama API Error Body:", errorBody);
-      throw new Error(`Ollama API error! status: ${response.status}`);
-    }
-
-    const data = await response.json();
-    ollamaRawResponse = data.response;
-    const jsonObj = JSON.parse(ollamaRawResponse);
-
-    console.log(jsonObj);
-    console.log("===== Ollama JSON 에이전트 실행이 완료... =====");
-    return jsonObj;
-
-  } catch (error: unknown) {
-    let errorMessage;
-
-    if (error instanceof SyntaxError) {
-      console.error("Ollama가 유효한 JSON을 반환하지 않았습니다. (JSON.parse 실패)");
-      throw new Error(`Ollama 원본 응답: ${ollamaRawResponse}`);
-    }
-    else if (error instanceof Error) {
-      errorMessage = error.message;
-      console.error("Ollama 에이전트 실행 중 오류 발생:", error);
-    }
-    else {
-      errorMessage = String(error);
-      console.error("Ollama 에이전트 실행 중 오류 발생:", error);
-    }
-
-    throw new Error(`Ollama 에이전트 실행 중 오류 발생: ${errorMessage}`);
   }
 }
 
@@ -462,6 +385,7 @@ async function buttonClickBuild(toBuildData: unknown): Promise<ActionStep[]> {
       acc.push({
         type: 'click',
         selector: "#" + element.id,
+        purpose: element.purpose
       });
     }
     return acc;
@@ -471,101 +395,6 @@ async function buttonClickBuild(toBuildData: unknown): Promise<ActionStep[]> {
   console.log("===== Button 클릭 데이터 생성 완료... =====");
   return buttonSteps;
 }
-
-// async function moodalButtonClickBuild(processData: any): Promise<ActionStep[]> {
-//   console.log("Button 클릭 데이터 생성 시작...");
-
-//   // AI 응답이 객체 안에 배열로 래핑되어 올 수 있으므로 정규화
-//   const dataToProcess = normalizeAiResponse(processData);
-
-//   const buttonSteps = dataToProcess.reduce((acc, element) => {
-//     // 질문 1: element.propse -> element.propose 로 수정
-//     if (element && element.tag === 'button' && element.propose === 'complete' && element.id) {
-//       acc.push({
-//         type: 'click',
-//         selector: "#" + element.id,
-//       });
-//     }
-//     return acc;
-//   }, [] as ActionStep[]);
-
-//   console.log(buttonSteps);
-//   console.log("Button 클릭 데이터 생성 완료...");
-//   return buttonSteps;
-// }
-
-// 자동 신청 실행
-async function automate(page: Page, browser: Browser | undefined, processChainData: ActionStep[], userDataFromServer: RawUserInfo | null = null): Promise<string | void> {
-  try {
-    console.log('>>> 자동 신청 시작...');
-
-    for (const step of processChainData) {
-      if (!step.type || !step.selector) {
-        console.warn('Skipping invalid action:', step);
-        continue;
-      }
-
-      switch (step.type) {
-        case 'fill':
-          if (typeof step.value === 'undefined') {
-            console.warn(`Skipping fill action: 'value' is missing for selector ${step.selector}`);
-            continue;
-          }
-          await page.fill(step.selector, step.value);
-          console.log(`Filling ${step.selector} with value: ${step.value}`);
-          break;
-
-        case 'click':
-          await page.click(step.selector);
-          console.log(`Clicking ${step.selector}`);
-
-          console.log("$ 모달 액션 실행중...");
-
-          // TODO: 모달 셀렉터를 하드코딩하지 않고 동적으로 감지하는 로직 필요
-          const elements = await getElementsFromModal(page, "#paperApplyModal");
-          const vaildData = await filteringValidData(elements);
-
-          // input 먼저 처리
-          const inputFields = await filteringInputFields(vaildData);
-          if (inputFields.length > 0 && userDataFromServer) {
-            const jsonPrompt = await inputPromptGenerator(inputFields, userDataFromServer);
-            const agentResult = await ollamaRunJsonAgent(jsonPrompt);
-            const inputChain = await inputChainBuild(vaildData, agentResult);
-            await automate(page, browser, inputChain); // userDataFromServer는 모달 내부 재귀호출 시 필요 없음
-          }
-
-          // button 처리
-          const buttons = await filteringButtons(vaildData);
-          if (buttons.length > 0) {
-            const buttonPrompt = await modalButtonPromptGenerator(buttons);
-            const buttonAgentResult = await ollamaRunJsonAgent(buttonPrompt);
-            // const buttonChain = await moodalButtonClickBuild(buttonAgentResult);
-            // await automate(page, browser, buttonChain); // userDataFromServer는 모달 내부 재귀호출 시 필요 없음
-          }
-          break;
-
-        default:
-          // 'fill' 또는 'click'이 아닌 경우를 처리하기 위한 타입 단언
-          const exhaustiveCheck: never = step;
-          console.warn(`Unknown action type: ${(exhaustiveCheck as ActionStep).type}. Skipping.`);
-          break;
-      }
-    }
-
-    console.log('>>> 자동 신청 완료...');
-  } catch (error: any) {
-    console.error('자동 신청 중 오류 발생:', error);
-    return error.message;
-  } finally {
-    // 최상위 호출에서만 브라우저를 닫도록 로직 수정 필요 (현재는 재귀 호출 시 닫힐 수 있음)
-    // 이 부분은 원본 로직을 따름
-    if (browser) {
-      // await browser.close(); // 원본 코드에서는 이 부분이 주석 처리되어 있었음
-    }
-  }
-}
-
-// --- API 엔드포인트 ---
 
 app.post('/submit-data', (req: Request, res: Response) => {
   const data = req.body;
@@ -601,16 +430,26 @@ app.post('/api/run-agent', async (req: Request<{}, {}, RunAgentRequestBody>, res
     const vaildData = await filteringValidData(elements);
 
     // input 처리
-    // const inputFields = await filteringInputFields(vaildData);
-    // const jsonPrompt = await inputPromptGenerator(inputFields, userDataFromServer);
-    // const agentResult = await runJsonAgent(jsonPrompt);
-    // const inputChain = await inputChainBuild(vaildData, agentResult);
-    // await automate(page, browser, inputChain, userDataFromServer); // browser 전달
+    const inputFields = await filteringInputFields(vaildData);
+    const inputJsonPrompt = await inputPromptGenerator(inputFields, userDataFromServer);
+    const inputAgentResult = await runJsonAgent(inputJsonPrompt);
+    const inputChain = await inputChainBuild(inputFields, inputAgentResult);
+    for (const step of inputChain) {
+      if (!step.type || !step.selector) {
+        console.warn('Skipping invalid action:', step);
+        continue;
+      }
+
+      if (step.type === 'fill') {
+        console.log(`Filling ${step.selector} with value: ${step.value}`);
+        await page.fill(step.selector, step.value);
+      }
+    }
 
     // additional_action 버튼 수행
     const buttons = await filteringButtons(vaildData);
     const jsonPrompt = await buttonPromptGenerator(buttons);
-    const agentResult = await ollamaRunJsonAgent(jsonPrompt);
+    const agentResult = await runJsonAgent(jsonPrompt);
     const buttonChain = await buttonClickBuild(agentResult);
     for (const step of buttonChain) {
       if (!step.type || !step.selector) {
@@ -618,23 +457,70 @@ app.post('/api/run-agent', async (req: Request<{}, {}, RunAgentRequestBody>, res
         continue;
       }
 
-      await page.click(step.selector);
-      console.log(`Clicking ${step.selector}`);
+      // 모달 작업 수행
+      if (step.type === 'click' && step.purpose === 'additional_action') {
+        await page.click(step.selector);
+        console.log(`Clicking ${step.selector}`);
+
+        const modalElements = await getElementsFromModal(page, "#paperApplyModal");
+        const modalVaildData = await filteringValidData(modalElements);
+
+        // input 입력
+        const modalInputFields = await filteringInputFields(modalVaildData);
+        const jsonPrompt = await inputPromptGenerator(modalInputFields, userDataFromServer);
+        const agentResult = await runJsonAgent(jsonPrompt);
+        const inputChain = await inputChainBuild(modalInputFields, agentResult);
+
+        for (const step of inputChain) {
+          if (!step.type || !step.selector) {
+            console.warn('Skipping invalid action:', step);
+            continue;
+          }
+
+          if (step.type === 'fill') {
+            console.log(`Filling ${step.selector} with value: ${step.value}`);
+            await page.fill(step.selector, step.value);
+          }
+        }
+
+        const modalButton = await filteringButtons(modalVaildData);
+        const modalButtonPrompt = await buttonPromptGenerator(modalButton);
+        const modalAgentResult = await runJsonAgent(modalButtonPrompt);
+        const modalButtonChain = await buttonClickBuild(modalAgentResult);
+
+        for (const step of modalButtonChain) {
+          if (!step.type || !step.selector) {
+            console.warn('Skipping invalid action:', step);
+            continue;
+          }
+
+          if (step.type === 'click' && step.purpose === 'additional_action') {
+            await page.click(step.selector);
+            console.log(`Clicking ${step.selector}`);
+          }
+        }
+      }
+
+      // 제출 작업 수행
+      if (step.type === 'click' && step.purpose === 'submit') {
+        await page.click(step.selector);
+        console.log(`Clicking ${step.selector}`);
+      }
     }
-
-    // await automate(page, browser, buttonChain, userDataFromServer); // <- 새로 만들 필요가 있음
-
-    // 참고: automate 함수 내부에서 finally 블록이 browser를 닫을 수 있으므로
-    // 이 지점에서는 browser 객체가 이미 닫혔을 수 있습니다.
-    // 원본 코드에서 automate의 finally 블록이 주석처리 되어있어 유지합니다.
-
   } catch (error: any) {
     console.error('자동 신청중 에러 발생:', error.message);
     jobStorage[jobId] = { status: 'error', result: error.message };
-    // return error.message; // 여기서 반환하면 안 됨 (응답은 이미 보냄)
   } finally {
+    if (jobStorage[jobId] && jobStorage[jobId].status === 'pending') {
+      console.log(`[Job ${jobId}] 자동 신청 완료.`);
+      jobStorage[jobId] = {
+        status: 'complete',
+        result: '자동 신청이 성공적으로 완료되었습니다.'
+      };
+    }
+
     if (browser) {
-      // await browser.close(); // 최상위 레벨에서 닫기 (원본 코드 주석 유지)
+      // await browser.close();
     }
   }
 });
